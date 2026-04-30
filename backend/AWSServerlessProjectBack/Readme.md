@@ -1,76 +1,126 @@
-# AWS Serverless Application Project with Powertools for AWS Lambda (.NET)
+# Backend - CRUD Casas (AWS Serverless)
 
-This starter project consists of:
+API REST serverless para gestión de propiedades inmobiliarias. Construida con .NET 10, AWS Lambda, API Gateway y PostgreSQL (RDS).
 
-* serverless.template - an AWS CloudFormation Serverless Application Model template file for declaring your Serverless functions and other AWS resources
-* Function.cs - class file containing the C# method mapped to the single function declared in the template file
-* aws-lambda-tools-defaults.json - default argument settings for use with Visual Studio and command line deployment tools for AWS
-
-You may also have a test project depending on the options selected.
-
-The generated project contains a Serverless template declaration for a single AWS Lambda function that will be exposed through Amazon API Gateway as a HTTP *Get* operation. Edit the template to customize the function or add more functions and other resources needed by your application, and edit the function code in Function.cs. You can then deploy your Serverless application.
-
-## Powertools for AWS Lambda (.NET)
-
-[Powertools for AWS Lambda (.NET)](https://awslabs.github.io/aws-lambda-powertools-dotnet/) is a developer toolkit to implement Serverless best practices and increase developer velocity.
-
-This starter project comes with Powertools Loging, Metrics and Tracing configured through environment variables defined in the `serverless.template` file and annotations on methods in `Function.cs`
-
-**Environment variables:**
-
-* POWERTOOLS_SERVICE_NAME=ServerlessGreeting
-* POWERTOOLS_LOG_LEVEL=Info
-* POWERTOOLS_LOGGER_CASE=PascalCase
-* POWERTOOLS_TRACER_CAPTURE_RESPONSE=true
-* POWERTOOLS_TRACER_CAPTURE_ERROR=true
-* POWERTOOLS_METRICS_NAMESPACE=ServerlessGreeting
-
-References to the environment variables can be found [here]([https://](https://awslabs.github.io/aws-lambda-powertools-dotnet/references/))
-
-**Included NuGet Packages:**
-
-* [AWS.Lambda.Powertools.Logging](https://awslabs.github.io/aws-lambda-powertools-dotnet/core/logging/)
-* [AWS.Lambda.Powertools.Metrics](https://awslabs.github.io/aws-lambda-powertools-dotnet/core/metrics/)
-* [AWS.Lambda.Powertools.Tracing](https://awslabs.github.io/aws-lambda-powertools-dotnet/core/tracing/)
-
-## Here are some steps to follow from Visual Studio
-
-To deploy your Serverless application, right click the project in Solution Explorer and select *Publish to AWS Lambda*.
-
-To view your deployed application open the Stack View window by double-clicking the stack name shown beneath the AWS CloudFormation node in the AWS Explorer tree. The Stack View also displays the root URL to your published application.
-
-## Here are some steps to follow to get started from the command line
-
-Once you have edited your template and code you can deploy your application using the [Amazon.Lambda.Tools Global Tool](https://github.com/aws/aws-extensions-for-dotnet-cli#aws-lambda-amazonlambdatools) from the command line.
-
-Install Amazon.Lambda.Tools Global Tools if not already installed.
+## Arquitectura
 
 ```
-    dotnet tool install -g Amazon.Lambda.Tools
+Cliente → API Gateway → Lambda (.NET 10) → RDS PostgreSQL
 ```
 
-If already installed check if new version is available.
+Capas internas de cada función Lambda:
 
 ```
-    dotnet tool update -g Amazon.Lambda.Tools
+Presentation (CasaFunctions)
+    ↓
+Business (CasaService)
+    ↓
+Persistence (CasaRepository → funciones almacenadas PostgreSQL)
 ```
 
-Execute unit tests
+## Endpoints
 
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/casas` | Listar casas (paginado) |
+| GET | `/casas/{id}` | Obtener casa por ID |
+| POST | `/casas` | Crear casa |
+| PUT | `/casas/{id}` | Actualizar casa |
+| DELETE | `/casas/{id}` | Eliminar casa |
+
+**URL base:** `https://g3oak4ydna.execute-api.us-east-1.amazonaws.com/Prod/`
+
+### Parámetros de paginación (GET /casas)
+
+| Parámetro | Tipo | Default | Descripción |
+|-----------|------|---------|-------------|
+| `page` | int | 1 | Número de página |
+| `pageSize` | int | 20 | Resultados por página |
+
+## Prerrequisitos
+
+- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [AWS CLI](https://aws.amazon.com/cli/) configurado con credenciales válidas
+- [Amazon.Lambda.Tools](https://github.com/aws/aws-extensions-for-dotnet-cli)
+
+```bash
+dotnet tool install -g Amazon.Lambda.Tools
 ```
-    cd "AWSServerlessProjectBack/test/AWSServerlessProjectBack.Tests"
-    dotnet test
+
+## Correr localmente
+
+1. Clonar el repositorio y pararse en la carpeta del proyecto:
+
+```bash
+cd backend/AWSServerlessProjectBack
 ```
 
-Deploy application
+2. Configurar la variable de entorno con la cadena de conexión a la BD:
 
+```bash
+# Windows PowerShell
+$env:DB_CONNECTION_STRING = "Host=<host>;Port=5432;Database=CasasDB;Username=postgres;Password=<password>"
 ```
-    cd "AWSServerlessProjectBack/src/AWSServerlessProjectBack"
-    dotnet lambda deploy-serverless
+
+3. Compilar el proyecto:
+
+```bash
+dotnet build
 ```
 
-## Arm64
+> Para pruebas locales completas se recomienda usar [AWS SAM CLI](https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/install-sam-cli.html) con `sam local start-api`.
 
-Arm64 support is provided by the AWS Graviton2 processor. For many Lambda workloads Graviton2 provides the best price performance.
+## Despliegue
 
-If you want to run your Lambda on a Graviton2 Arm64 processor, all you need to do is replace `x86_64` with `arm64` under `"Architectures":` in the `serverless.template` file. Then deploy as described above.
+El despliegue se hace en dos pasos: empaquetar el código y actualizar cada función Lambda en AWS.
+
+### Paso 1 — Generar el paquete
+
+Desde `backend/AWSServerlessProjectBack/`:
+
+```powershell
+dotnet lambda package -c Release -f net10.0 --output-package ./casas-lambda.zip
+```
+
+O usando el script incluido:
+
+```powershell
+.\build.ps1
+```
+
+### Paso 2 — Actualizar las funciones en AWS
+
+Ejecutar para cada función (reemplazar `<nombre-funcion>` con el nombre real en AWS):
+
+```bash
+aws lambda update-function-code \
+  --function-name <nombre-funcion> \
+  --zip-file fileb://casas-lambda.zip \
+  --region us-east-1
+```
+
+Las funciones desplegadas son:
+
+| Nombre en AWS | Handler |
+|---------------|---------|
+| `GetAllCasas` | `CasaFunctions::GetAllCasas` |
+| `GetCasa` | `CasaFunctions::GetCasa` |
+| `CreateCasa` | `CasaFunctions::CreateCasa` |
+| `UpdateCasa` | `CasaFunctions::UpdateCasa` |
+| `DeleteCasa` | `CasaFunctions::DeleteCasa` |
+
+### Variables de entorno en Lambda
+
+Configuradas en `serverless.template` y aplicadas automáticamente al desplegar:
+
+| Variable | Descripción |
+|----------|-------------|
+| `DB_CONNECTION_STRING` | Cadena de conexión a RDS PostgreSQL |
+| `POWERTOOLS_SERVICE_NAME` | Nombre del servicio para logs y trazas |
+| `POWERTOOLS_LOG_LEVEL` | Nivel de logging (`Info`) |
+
+## Stack CloudFormation
+
+- **Nombre:** `awsserverless-casas`
+- **Región:** `us-east-1`
+- **S3 bucket artefactos:** `awsserverless-casas-360131674505-us-east-1`

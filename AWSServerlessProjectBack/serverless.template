@@ -1,0 +1,100 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Transform": "AWS::Serverless-2016-10-31",
+  "Description": "AWS Serverless - CRUD Casas con arquitectura en capas",
+  "Globals": {
+    "Function": {
+      "Runtime": "dotnet8",
+      "Architectures": [ "x86_64" ],
+      "MemorySize": 512,
+      "Timeout": 30,
+      "CodeUri": "./casas-lambda.zip",
+      "Environment": {
+        "Variables": {
+          "POWERTOOLS_SERVICE_NAME": "CasasService",
+          "POWERTOOLS_LOG_LEVEL": "Info",
+          "POWERTOOLS_LOGGER_CASE": "PascalCase",
+          "POWERTOOLS_TRACER_CAPTURE_RESPONSE": true,
+          "POWERTOOLS_TRACER_CAPTURE_ERROR": true,
+          "POWERTOOLS_METRICS_NAMESPACE": "CasasService",
+          "DB_CONNECTION_STRING": "Host=database-1.cr88kqoas6i4.us-east-2.rds.amazonaws.com;Port=5432;Database=CasasDB;Username=postgres;Password=Adrian147.t"
+        }
+      }
+    }
+  },
+  "Resources": {
+    "GetAllCasas": {
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "Handler": "AWSServerlessProjectBack::AWSServerlessProjectBack.Presentation.CasaFunctions::GetAllCasas",
+        "Policies": [ "AWSLambdaBasicExecutionRole" ],
+        "Events": {
+          "Api": {
+            "Type": "Api",
+            "Properties": { "Path": "/casas", "Method": "GET" }
+          }
+        }
+      }
+    },
+    "GetCasa": {
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "Handler": "AWSServerlessProjectBack::AWSServerlessProjectBack.Presentation.CasaFunctions::GetCasa",
+        "Policies": [ "AWSLambdaBasicExecutionRole" ],
+        "Events": {
+          "Api": {
+            "Type": "Api",
+            "Properties": { "Path": "/casas/{id}", "Method": "GET" }
+          }
+        }
+      }
+    },
+    "CreateCasa": {
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "Handler": "AWSServerlessProjectBack::AWSServerlessProjectBack.Presentation.CasaFunctions::CreateCasa",
+        "Policies": [ "AWSLambdaBasicExecutionRole" ],
+        "Events": {
+          "Api": {
+            "Type": "Api",
+            "Properties": { "Path": "/casas", "Method": "POST" }
+          }
+        }
+      }
+    },
+    "UpdateCasa": {
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "Handler": "AWSServerlessProjectBack::AWSServerlessProjectBack.Presentation.CasaFunctions::UpdateCasa",
+        "Policies": [ "AWSLambdaBasicExecutionRole" ],
+        "Events": {
+          "Api": {
+            "Type": "Api",
+            "Properties": { "Path": "/casas/{id}", "Method": "PUT" }
+          }
+        }
+      }
+    },
+    "DeleteCasa": {
+      "Type": "AWS::Serverless::Function",
+      "Properties": {
+        "Handler": "AWSServerlessProjectBack::AWSServerlessProjectBack.Presentation.CasaFunctions::DeleteCasa",
+        "Policies": [ "AWSLambdaBasicExecutionRole" ],
+        "Events": {
+          "Api": {
+            "Type": "Api",
+            "Properties": { "Path": "/casas/{id}", "Method": "DELETE" }
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "ApiURL": {
+      "Description": "URL del endpoint API",
+      "Value": {
+        "Fn::Sub": "https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/"
+      }
+    }
+  }
+}

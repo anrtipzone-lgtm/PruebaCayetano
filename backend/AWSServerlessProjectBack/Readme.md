@@ -124,3 +124,4 @@ Configuradas en `serverless.template` y aplicadas automáticamente al desplegar:
 - **Nombre:** `awsserverless-casas`
 - **Región:** `us-east-1`
 - **S3 bucket artefactos:** `awsserverless-casas-360131674505-us-east-1`
+
